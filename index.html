@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ランダム計算・入力版</title>
+  <title>計算名人君</title>
   <style>
     body {
       font-family: sans-serif;
       text-align: center;
       padding: 2em;
       font-size: 1.5em;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 1em;
     }
     #problem {
       font-size: 5vw;
@@ -46,16 +50,27 @@
       font-size: 1em;
       color: #e67e22;
     }
+    #gauge {
+      margin-top: 0.5em;
+    }
+    .gauge-block {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin: 0 2px;
+      background-color: #ccc;
+    }
   </style>
 </head>
 <body>
-  <h1>ランダム計算・入力版</h1>
+  <h1>計算名人君</h1>
   <div id="problem">問題を読み込み中...</div>
   <input type="number" id="userAnswer" placeholder="答え" />
   <br />
   <button id="submitBtn">答え合わせ</button>
   <div id="result"></div>
   <div id="streak"></div>
+  <div id="gauge"></div>
 
   <script>
     let currentAnswer = null;
@@ -66,6 +81,7 @@
     const submitBtn = document.getElementById("submitBtn");
     const resultDiv = document.getElementById("result");
     const streakDiv = document.getElementById("streak");
+    const gaugeDiv = document.getElementById("gauge");
 
     const displayOp = {
       '+': '+',
@@ -73,6 +89,17 @@
       '*': '×',
       '/': '÷'
     };
+
+    function updateGauge(count) {
+      const colors = ['blue', 'green', 'gold', 'orange', 'red'];
+      gaugeDiv.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const block = document.createElement('div');
+        block.className = 'gauge-block';
+        if (i < count) block.style.backgroundColor = colors[i];
+        gaugeDiv.appendChild(block);
+      }
+    }
 
     function generateProblem() {
       let ops = ['+', '-', '*', '/'];
@@ -87,23 +114,22 @@
       let valid = false;
       let attempts = 0;
 
-      while (!valid && attempts < 100) {
-        num1 = Math.floor(Math.random() * 29) + 2;
-        num2 = Math.floor(Math.random() * 29) + 2;
-        num3 = Math.floor(Math.random() * 29) + 2;
-        expression = `${num1} ${op1} ${num2} ${op2} ${num3}`;
+      while (!valid && attempts < 1000) {
+        num3 = Math.floor(Math.random() * 199) + 2;
+        const multiplier = Math.floor(Math.random() * 20) + 2;
+        const num1_candidate = num3 * multiplier;
 
-        try {
-          result = eval(expression);
-          if (Number.isInteger(result) && result >= 0) {
-            const step1 = eval(`${num1} ${op1} ${num2}`);
-            if (op2 === '-' && step1 - num3 < 0) continue;
-            if (op2 === '/' && (!Number.isInteger(step1) || step1 < num3 || step1 % num3 !== 0)) continue;
-            if (op1 === '-' && num1 - num2 < 0) continue;
-            if (op1 === '/' && (num1 < num2 || num1 % num2 !== 0)) continue;
-            valid = true;
-          }
-        } catch (e) {}
+        if (num1_candidate > 200) continue;
+
+        num1 = num1_candidate;
+        num2 = multiplier;
+
+        expression = `${num1} * ${num2} / ${num3}`;
+        result = num1 * num2 / num3;
+
+        if (Number.isInteger(result) && result >= 0) {
+          valid = true;
+        }
 
         attempts++;
       }
@@ -114,14 +140,15 @@
       }
 
       const displayExpression = expression
-        .replace(op1, displayOp[op1])
-        .replace(op2, displayOp[op2]);
+        .replace('*', displayOp['*'])
+        .replace('/', displayOp['/']);
 
       problemDiv.innerText = displayExpression;
       currentAnswer = result;
       userAnswer.value = "";
       resultDiv.innerText = "";
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
+      updateGauge(Math.min(correctStreak, 5));
       userAnswer.focus();
     }
 
@@ -135,6 +162,7 @@
         correctStreak = 0;
       }
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
+      updateGauge(Math.min(correctStreak, 5));
       setTimeout(generateProblem, 1500);
     });
 
@@ -148,3 +176,4 @@
   </script>
 </body>
 </html>
+
