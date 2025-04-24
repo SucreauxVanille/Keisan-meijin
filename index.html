@@ -18,6 +18,10 @@
     #problem {
       font-size: 5vw;
       margin: 1em 0;
+      word-break: keep-all;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     input[type="number"] {
       font-size: 1.2em;
@@ -32,6 +36,27 @@
       border: none;
       border-radius: 0.5em;
       cursor: pointer;
+    }
+    #submitBtn {
+      background-color: #3498db;
+      color: white;
+    }
+    #nextBtn {
+      background-color: #aaa;
+      color: white;
+      cursor: not-allowed;
+    }
+    #nextBtn.enabled {
+      background-color: #2ecc71;
+      cursor: pointer;
+    }
+    #retryBtn {
+      background-color: #f1c40f;
+      color: white;
+    }
+    #showAnswerBtn {
+      background-color: #e74c3c;
+      color: white;
     }
     #result {
       margin-top: 1em;
@@ -59,16 +84,17 @@
   <div id="problem">問題を読み込み中...</div>
   <input type="number" id="userAnswer" placeholder="答え" />
   <br />
-  <button id="submitBtn">答え合わせ</button>
-  <div id="controlButtons"></div>
+  <button id="submitBtn">答える！</button>
   <div id="result"></div>
+  <div id="buttons"></div>
+  <button id="nextBtn" disabled>次へ</button>
   <div id="streak"></div>
   <div id="gauge"></div>
 
   <script>
     let currentAnswer = null;
     let correctStreak = 0;
-    let allowSubmit = true;
+    let showingAnswer = false;
 
     const problemDiv = document.getElementById("problem");
     const userAnswer = document.getElementById("userAnswer");
@@ -76,7 +102,8 @@
     const resultDiv = document.getElementById("result");
     const streakDiv = document.getElementById("streak");
     const gaugeDiv = document.getElementById("gauge");
-    const controlButtons = document.getElementById("controlButtons");
+    const nextBtn = document.getElementById("nextBtn");
+    const buttonsDiv = document.getElementById("buttons");
 
     const displayOp = {
       '+': '+',
@@ -106,54 +133,21 @@
           Math.floor(Math.random() * 29) + 2,
           Math.floor(Math.random() * 29) + 2
         ];
-
         let op1 = ops[Math.floor(Math.random() * ops.length)];
         let op2 = ops[Math.floor(Math.random() * ops.length)];
-        if (op1 === '/' && op2 === '/') continue; // Avoid double division
+
+        if (op1 === '/' && op2 === '/') continue;
 
         let expr = `${nums[0]} ${op1} ${nums[1]} ${op2} ${nums[2]}`;
-
         try {
-          const tempExpr = expr.replace(/\÷/g, '/').replace(/\×/g, '*');
+          const tempExpr = expr.replace(/÷/g, '/').replace(/×/g, '*');
           const val = Function(`"use strict"; return (${tempExpr})`)();
-          if (Number.isInteger(val) && val > 0) {
-            return { expr, val };
-          }
+          if (Number.isInteger(val) && val > 0) return { expr, val };
         } catch (e) {
           continue;
         }
       }
       return null;
-    }
-
-    function showButtons(isCorrect) {
-      controlButtons.innerHTML = '';
-      if (isCorrect) {
-        const nextBtn = document.createElement("button");
-        nextBtn.innerText = "次へ";
-        nextBtn.onclick = generateProblem;
-        controlButtons.appendChild(nextBtn);
-      } else {
-        const retryBtn = document.createElement("button");
-        retryBtn.innerText = "再挑戦";
-        retryBtn.onclick = () => {
-          resultDiv.innerText = "";
-          controlButtons.innerHTML = '';
-          userAnswer.focus();
-        };
-
-        const giveUpBtn = document.createElement("button");
-        giveUpBtn.innerText = "答えを見る";
-        giveUpBtn.onclick = () => {
-          resultDiv.innerText = `正しい答えは ${currentAnswer} です。`;
-          correctStreak = 0;
-          showButtons(true);
-          updateGauge(0);
-        };
-
-        controlButtons.appendChild(retryBtn);
-        controlButtons.appendChild(giveUpBtn);
-      }
     }
 
     function generateProblem() {
@@ -173,31 +167,71 @@
       currentAnswer = problem.val;
       userAnswer.value = "";
       resultDiv.innerText = "";
-      controlButtons.innerHTML = '';
-      allowSubmit = true;
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
       updateGauge(Math.min(correctStreak, 5));
+      nextBtn.disabled = true;
+      nextBtn.classList.remove('enabled');
+      buttonsDiv.innerHTML = '';
+      userAnswer.disabled = false;
+      submitBtn.disabled = false;
+      showingAnswer = false;
       userAnswer.focus();
     }
 
     submitBtn.addEventListener("click", () => {
-      if (!allowSubmit) return;
       const userVal = parseInt(userAnswer.value);
       if (userVal === currentAnswer) {
         resultDiv.innerText = "正解！よくできました！";
         correctStreak++;
-        allowSubmit = false;
-        showButtons(true);
+        streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
+        updateGauge(Math.min(correctStreak, 5));
+        nextBtn.disabled = false;
+        nextBtn.classList.add('enabled');
+        submitBtn.disabled = true;
+        userAnswer.disabled = true;
+        buttonsDiv.innerHTML = '';
       } else {
-        resultDiv.innerText = "不正解...";
-        showButtons(false);
+        resultDiv.innerText = "不正解... もう一度チャレンジしてみよう！";
+        correctStreak = 0;
+        streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
+        updateGauge(Math.min(correctStreak, 5));
+        buttonsDiv.innerHTML = '';
+
+        const retryBtn = document.createElement("button");
+        retryBtn.id = "retryBtn";
+        retryBtn.innerText = "再挑戦";
+        retryBtn.onclick = () => {
+          userAnswer.value = "";
+          resultDiv.innerText = "";
+          buttonsDiv.innerHTML = '';
+          userAnswer.focus();
+        };
+
+        const showBtn = document.createElement("button");
+        showBtn.id = "showAnswerBtn";
+        showBtn.innerText = "答えを見る";
+        showBtn.onclick = () => {
+          resultDiv.innerText = `正しい答えは ${currentAnswer} です。`;
+          buttonsDiv.innerHTML = '';
+          nextBtn.disabled = false;
+          nextBtn.classList.add('enabled');
+          submitBtn.disabled = true;
+          userAnswer.disabled = true;
+        };
+
+        buttonsDiv.appendChild(retryBtn);
+        buttonsDiv.appendChild(showBtn);
       }
-      streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
-      updateGauge(Math.min(correctStreak, 5));
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (!nextBtn.disabled) {
+        generateProblem();
+      }
     });
 
     userAnswer.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !submitBtn.disabled) {
         submitBtn.click();
       }
     });
