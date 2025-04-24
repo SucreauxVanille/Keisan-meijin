@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ランダム計算・入力版</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2em;
+      font-size: 1.5em;
+    }
+    #problem {
+      font-size: 5vw;
+      margin: 1em 0;
+      word-break: keep-all;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    input[type="number"] {
+      font-size: 1.2em;
+      padding: 0.3em;
+      width: 5em;
+      text-align: center;
+    }
+    button {
+      font-size: 1.2em;
+      margin: 0.5em;
+      padding: 0.5em 1em;
+      border: none;
+      border-radius: 0.5em;
+      cursor: pointer;
+    }
+    #submitBtn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    #result {
+      margin-top: 1em;
+      font-weight: bold;
+    }
+    #streak {
+      margin-top: 0.5em;
+      font-size: 1em;
+      color: #e67e22;
+    }
+  </style>
+</head>
+<body>
+  <h1>ランダム計算・入力版</h1>
+  <div id="problem">問題を読み込み中...</div>
+  <input type="number" id="userAnswer" placeholder="答え" />
+  <br />
+  <button id="submitBtn">答え合わせ</button>
+  <div id="result"></div>
+  <div id="streak"></div>
+
+  <script>
+    let currentAnswer = null;
+    let correctStreak = 0;
+
+    const problemDiv = document.getElementById("problem");
+    const userAnswer = document.getElementById("userAnswer");
+    const submitBtn = document.getElementById("submitBtn");
+    const resultDiv = document.getElementById("result");
+    const streakDiv = document.getElementById("streak");
+
+    const displayOp = {
+      '+': '+',
+      '-': '-',
+      '*': '×',
+      '/': '÷'
+    };
+
+    function generateProblem() {
+      let ops = ['+', '-', '*', '/'];
+      let op1 = ops[Math.floor(Math.random() * ops.length)];
+      let op2 = ops[Math.floor(Math.random() * ops.length)];
+
+      while (op1 === '/' && op2 === '/') {
+        op2 = ops[Math.floor(Math.random() * ops.length)];
+      }
+
+      let num1, num2, num3, expression, result;
+      let valid = false;
+      let attempts = 0;
+
+      while (!valid && attempts < 100) {
+        num1 = Math.floor(Math.random() * 29) + 2;
+        num2 = Math.floor(Math.random() * 29) + 2;
+        num3 = Math.floor(Math.random() * 29) + 2;
+        expression = `${num1} ${op1} ${num2} ${op2} ${num3}`;
+
+        try {
+          result = eval(expression);
+          if (Number.isInteger(result) && result >= 0) {
+            const step1 = eval(`${num1} ${op1} ${num2}`);
+            if (op2 === '-' && step1 - num3 < 0) continue;
+            if (op2 === '/' && (!Number.isInteger(step1) || step1 < num3 || step1 % num3 !== 0)) continue;
+            if (op1 === '-' && num1 - num2 < 0) continue;
+            if (op1 === '/' && (num1 < num2 || num1 % num2 !== 0)) continue;
+            valid = true;
+          }
+        } catch (e) {}
+
+        attempts++;
+      }
+
+      if (!valid) {
+        problemDiv.innerText = "問題の生成に失敗しました。リロードしてください。";
+        return;
+      }
+
+      const displayExpression = expression
+        .replace(op1, displayOp[op1])
+        .replace(op2, displayOp[op2]);
+
+      problemDiv.innerText = displayExpression;
+      currentAnswer = result;
+      userAnswer.value = "";
+      resultDiv.innerText = "";
+      streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
+      userAnswer.focus();
+    }
+
+    submitBtn.addEventListener("click", () => {
+      const userVal = parseInt(userAnswer.value);
+      if (userVal === currentAnswer) {
+        resultDiv.innerText = "正解！よくできました！";
+        correctStreak++;
+      } else {
+        resultDiv.innerText = `不正解... 正しい答えは ${currentAnswer} です。`;
+        correctStreak = 0;
+      }
+      streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
+      setTimeout(generateProblem, 1500);
+    });
+
+    userAnswer.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        submitBtn.click();
+      }
+    });
+
+    generateProblem();
+  </script>
+</body>
+</html>
