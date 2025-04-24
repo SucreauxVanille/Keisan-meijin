@@ -6,22 +6,26 @@
   <title>計算名人君</title>
   <style>
     body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2em;
-      font-size: 1.5em;
+  font-family: sans-serif;
+  text-align: center;
+  padding: 2em;
+  font-size: 1.5em;
+  max-width: 600px;         /* 最大幅を設定 */
+  margin: 0 auto;           /* 左右中央に配置 */
     }
     h1 {
-      font-size: 1.5em;
+      font-size: 1.2em;
       margin-bottom: 1em;
     }
     #problem {
-      font-size: 5vw;
-      margin: 1em 0;
-      word-break: keep-all;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+  font-size: 5vw;
+  margin: 1em 0;
+  word-break: keep-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;          /* 横幅超え防止 */
+  box-sizing: border-box;   /* paddingを含めた幅制御 */
     }
     input[type="number"] {
       font-size: 1.2em;
@@ -101,50 +105,48 @@
       }
     }
 
-    function generateProblem() {
-      let ops = ['+', '-', '*', '/'];
-      let op1 = ops[Math.floor(Math.random() * ops.length)];
-      let op2 = ops[Math.floor(Math.random() * ops.length)];
+    function generateValidProblem() {
+      const ops = ['+', '-', '*', '/'];
+      const maxAttempts = 1000;
 
-      while (op1 === '/' && op2 === '/') {
-        op2 = ops[Math.floor(Math.random() * ops.length)];
-      }
+      for (let i = 0; i < maxAttempts; i++) {
+        const nums = [
+          Math.floor(Math.random() * 29) + 2,
+          Math.floor(Math.random() * 29) + 2,
+          Math.floor(Math.random() * 29) + 2
+        ];
+        let op1 = ops[Math.floor(Math.random() * ops.length)];
+        let op2 = ops[Math.floor(Math.random() * ops.length)];
 
-      let num1, num2, num3, expression, result;
-      let valid = false;
-      let attempts = 0;
+        if (op1 === '/' && op2 === '/') continue; // Avoid double division
 
-      while (!valid && attempts < 1000) {
-        num3 = Math.floor(Math.random() * 199) + 2;
-        const multiplier = Math.floor(Math.random() * 20) + 2;
-        const num1_candidate = num3 * multiplier;
-
-        if (num1_candidate > 200) continue;
-
-        num1 = num1_candidate;
-        num2 = multiplier;
-
-        expression = `${num1} * ${num2} / ${num3}`;
-        result = num1 * num2 / num3;
-
-        if (Number.isInteger(result) && result >= 0) {
-          valid = true;
+        let expr = `${nums[0]} ${op1} ${nums[1]} ${op2} ${nums[2]}`;
+        try {
+          const tempExpr = expr.replace(/\÷/g, '/').replace(/\×/g, '*');
+          const val = Function(`"use strict"; return (${tempExpr})`)();
+          if (Number.isInteger(val) && val >= 0) return { expr, val };
+        } catch (e) {
+          continue;
         }
-
-        attempts++;
       }
+      return null;
+    }
 
-      if (!valid) {
+    function generateProblem() {
+      const problem = generateValidProblem();
+      if (!problem) {
         problemDiv.innerText = "問題の生成に失敗しました。リロードしてください。";
         return;
       }
 
-      const displayExpression = expression
-        .replace('*', displayOp['*'])
-        .replace('/', displayOp['/']);
+      const displayExpression = problem.expr
+        .replace(/\*/g, displayOp['*'])
+        .replace(/\//g, displayOp['/'])
+        .replace(/\+/g, displayOp['+'])
+        .replace(/-/g, displayOp['-']);
 
       problemDiv.innerText = displayExpression;
-      currentAnswer = result;
+      currentAnswer = problem.val;
       userAnswer.value = "";
       resultDiv.innerText = "";
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
@@ -157,13 +159,13 @@
       if (userVal === currentAnswer) {
         resultDiv.innerText = "正解！よくできました！";
         correctStreak++;
+        setTimeout(generateProblem, 1500);
       } else {
         resultDiv.innerText = `不正解... 正しい答えは ${currentAnswer} です。`;
         correctStreak = 0;
       }
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
       updateGauge(Math.min(correctStreak, 5));
-      setTimeout(generateProblem, 1500);
     });
 
     userAnswer.addEventListener("keydown", (e) => {
@@ -176,4 +178,3 @@
   </script>
 </body>
 </html>
-
