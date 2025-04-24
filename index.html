@@ -6,26 +6,18 @@
   <title>計算名人君</title>
   <style>
     body {
-  font-family: sans-serif;
-  text-align: center;
-  padding: 2em;
-  font-size: 1.5em;
-  max-width: 600px;         /* 最大幅を設定 */
-  margin: 0 auto;           /* 左右中央に配置 */
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2em;
+      font-size: 1.5em;
     }
     h1 {
       font-size: 1.2em;
       margin-bottom: 1em;
     }
     #problem {
-  font-size: 5vw;
-  margin: 1em 0;
-  word-break: keep-all;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;          /* 横幅超え防止 */
-  box-sizing: border-box;   /* paddingを含めた幅制御 */
+      font-size: 5vw;
+      margin: 1em 0;
     }
     input[type="number"] {
       font-size: 1.2em;
@@ -40,10 +32,6 @@
       border: none;
       border-radius: 0.5em;
       cursor: pointer;
-    }
-    #submitBtn {
-      background-color: #4CAF50;
-      color: white;
     }
     #result {
       margin-top: 1em;
@@ -72,6 +60,7 @@
   <input type="number" id="userAnswer" placeholder="答え" />
   <br />
   <button id="submitBtn">答え合わせ</button>
+  <div id="controlButtons"></div>
   <div id="result"></div>
   <div id="streak"></div>
   <div id="gauge"></div>
@@ -79,6 +68,7 @@
   <script>
     let currentAnswer = null;
     let correctStreak = 0;
+    let allowSubmit = true;
 
     const problemDiv = document.getElementById("problem");
     const userAnswer = document.getElementById("userAnswer");
@@ -86,6 +76,7 @@
     const resultDiv = document.getElementById("result");
     const streakDiv = document.getElementById("streak");
     const gaugeDiv = document.getElementById("gauge");
+    const controlButtons = document.getElementById("controlButtons");
 
     const displayOp = {
       '+': '+',
@@ -115,21 +106,54 @@
           Math.floor(Math.random() * 29) + 2,
           Math.floor(Math.random() * 29) + 2
         ];
+
         let op1 = ops[Math.floor(Math.random() * ops.length)];
         let op2 = ops[Math.floor(Math.random() * ops.length)];
-
         if (op1 === '/' && op2 === '/') continue; // Avoid double division
 
         let expr = `${nums[0]} ${op1} ${nums[1]} ${op2} ${nums[2]}`;
+
         try {
           const tempExpr = expr.replace(/\÷/g, '/').replace(/\×/g, '*');
           const val = Function(`"use strict"; return (${tempExpr})`)();
-          if (Number.isInteger(val) && val >= 0) return { expr, val };
+          if (Number.isInteger(val) && val > 0) {
+            return { expr, val };
+          }
         } catch (e) {
           continue;
         }
       }
       return null;
+    }
+
+    function showButtons(isCorrect) {
+      controlButtons.innerHTML = '';
+      if (isCorrect) {
+        const nextBtn = document.createElement("button");
+        nextBtn.innerText = "次へ";
+        nextBtn.onclick = generateProblem;
+        controlButtons.appendChild(nextBtn);
+      } else {
+        const retryBtn = document.createElement("button");
+        retryBtn.innerText = "再挑戦";
+        retryBtn.onclick = () => {
+          resultDiv.innerText = "";
+          controlButtons.innerHTML = '';
+          userAnswer.focus();
+        };
+
+        const giveUpBtn = document.createElement("button");
+        giveUpBtn.innerText = "答えを見る";
+        giveUpBtn.onclick = () => {
+          resultDiv.innerText = `正しい答えは ${currentAnswer} です。`;
+          correctStreak = 0;
+          showButtons(true);
+          updateGauge(0);
+        };
+
+        controlButtons.appendChild(retryBtn);
+        controlButtons.appendChild(giveUpBtn);
+      }
     }
 
     function generateProblem() {
@@ -149,20 +173,24 @@
       currentAnswer = problem.val;
       userAnswer.value = "";
       resultDiv.innerText = "";
+      controlButtons.innerHTML = '';
+      allowSubmit = true;
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
       updateGauge(Math.min(correctStreak, 5));
       userAnswer.focus();
     }
 
     submitBtn.addEventListener("click", () => {
+      if (!allowSubmit) return;
       const userVal = parseInt(userAnswer.value);
       if (userVal === currentAnswer) {
         resultDiv.innerText = "正解！よくできました！";
         correctStreak++;
-        setTimeout(generateProblem, 1500);
+        allowSubmit = false;
+        showButtons(true);
       } else {
-        resultDiv.innerText = `不正解... 正しい答えは ${currentAnswer} です。`;
-        correctStreak = 0;
+        resultDiv.innerText = "不正解...";
+        showButtons(false);
       }
       streakDiv.innerText = `現在 ${correctStreak} 問連続正解中！`;
       updateGauge(Math.min(correctStreak, 5));
