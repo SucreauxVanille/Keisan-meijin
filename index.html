@@ -123,39 +123,44 @@
       }
     }
 
-    function generateValidProblem() {
-      const ops = ['+', '-', '*', '/'];
-      const maxAttempts = 1000;
+    function generateValidExpression() {
+      const ops = ['+', '-', '×', '÷'];
+      let a, b, c, op1, op2, expr, val;
 
-      for (let i = 0; i < maxAttempts; i++) {
-        const nums = [
-          Math.floor(Math.random() * 29) + 2,
-          Math.floor(Math.random() * 29) + 2,
-          Math.floor(Math.random() * 29) + 2
-        ];
-        let op1 = ops[Math.floor(Math.random() * ops.length)];
-        let op2 = ops[Math.floor(Math.random() * ops.length)];
+      while (true) {
+        a = Math.floor(Math.random() * 29) + 2;
+        b = Math.floor(Math.random() * 29) + 2;
+        c = Math.floor(Math.random() * 29) + 2;
+        op1 = ops[Math.floor(Math.random() * 4)];
+        op2 = ops[Math.floor(Math.random() * 4)];
 
-        if (op1 === '/' && op2 === '/') continue;
+        // 絶対に負の数にならないように調整
+        if (op1 === '-' && a < b) continue;
+        const temp = evalOp(a, op1, b);
+        if (temp === null || (op2 === '-' && temp < c)) continue;
 
-        let expr = `${nums[0]} ${op1} ${nums[1]} ${op2} ${nums[2]}`;
-        try {
-          const tempExpr = expr.replace(/÷/g, '/').replace(/×/g, '*');
-          const val = Function(`"use strict"; return (${tempExpr})`)();
-          if (Number.isInteger(val) && val > 0) return { expr, val };
-        } catch (e) {
-          continue;
-        }
+        val = evalOp(temp, op2, c);
+        if (val === null || !Number.isInteger(val) || val < 0) continue;
+
+        expr = `${a} ${op1} ${b} ${op2} ${c}`;
+        break;
       }
-      return null;
+
+      return { expr, val };
+    }
+
+    function evalOp(x, op, y) {
+      switch (op) {
+        case '+': return x + y;
+        case '-': return x - y;
+        case '×': return x * y;
+        case '÷': return y !== 0 && x % y === 0 ? x / y : null;
+        default: return null;
+      }
     }
 
     function generateProblem() {
-      const problem = generateValidProblem();
-      if (!problem) {
-        problemDiv.innerText = "問題の生成に失敗しました。リロードしてください。";
-        return;
-      }
+      const problem = generateValidExpression();
 
       const displayExpression = problem.expr
         .replace(/\*/g, displayOp['*'])
